@@ -307,6 +307,7 @@ func TestAllInterfacesAndStates(t *testing.T) {
 	t.Run("Redis会话x2", testSessionRedisTwice)
 	t.Run("渠道异常路径x2", testChannelErrorPathsTwice)
 	t.Run("未知单号映射x2", testUnknownRequestsTwice)
+	t.Run("支付状态守卫x2", testPayStateGuardsTwice)
 	t.Run("取消后到账退款x2", testLateCancelledRefundTwice)
 	t.Run("状态冲突回调x2", testStateConflictNotifyTwice)
 }

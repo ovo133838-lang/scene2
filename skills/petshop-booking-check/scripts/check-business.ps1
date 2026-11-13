@@ -19,7 +19,7 @@ $script:Fails = 0
 Write-Output "=== 宠物预约业务约束检查（库：$Db）==="
 
 # 1. 状态枚举合法
-$legal = "pending_payment","confirmed","cancel_review","cancelled","checked_in","in_service","finished","closed","payment_anomaly","no_show"
+$legal = "pending_payment","confirmed","cancel_review","cancelled","checked_in","in_service","completed","closed","payment_anomaly","no_show"
 $bad = Sql "SELECT DISTINCT status FROM bookings" | Where-Object { $legal -notcontains $_ }
 Check "状态枚举合法" (-not $bad) ("异常状态：" + ($bad -join ","))
 
@@ -58,7 +58,7 @@ Check "服务记录幂等" (-not $dupAct) ("重复记录：" + ($dupAct -join ";
 $amountErr = Sql @"
 SELECT p.booking_id,
   COALESCE(SUM(CASE WHEN p.status='paid' THEN p.amount END),0) AS paid,
-  COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.booking_id=p.booking_id AND r.status='success'),0) AS refunded
+  COALESCE((SELECT SUM(r.amount) FROM refunds r WHERE r.booking_id=p.booking_id AND r.status='refund_success'),0) AS refunded
 FROM payments p GROUP BY p.booking_id
 HAVING (paid - refunded) <> 0
    AND (paid - refunded) NOT IN (SELECT DISTINCT amount FROM payments WHERE status='paid')
