@@ -35,21 +35,20 @@ $total = [double](($coverLine -split '\s+')[-1] -replace '%','')
 Write-Host "    总覆盖率: $total%"
 if ($total -lt $CoverGate) { Pop-Location; throw "覆盖率 $total% 低于门禁 $CoverGate%" }
 # 分包覆盖率从合并 profile 汇总（单测 + 集成）
-$perPkg = @{}
+$acc = @{}
 Get-Content cover.out | ForEach-Object {
   if ($_ -match '^petshop/(internal/\w+)/') {
     $pkg = $Matches[1]
     $parts = $_ -split ' '
-    if ($perPkg.ContainsKey($pkg)) {
-      $perPkg[$pkg] = @($perPkg[$pkg][0] + [int]$parts[-2], $perPkg[$pkg][1] + [int]$parts[-1])
-    } else {
-      $perPkg[$pkg] = @([int]$parts[-2], [int]$parts[-1])
-    }
+    if (-not $acc[$pkg]) { $acc[$pkg] = [pscustomobject]@{ s = [int64]0; c = [int64]0 } }
+    $acc[$pkg].s += [int64]$parts[-2]
+    $acc[$pkg].c += [int64]$parts[-1]
   }
 }
-foreach ($k in $perPkg.Keys | Sort-Object) {
-  $s = $perPkg[$k]
-  if ($s[0] -gt 0) { Write-Host ("    分包 {0,-22} {1,5:P1}" -f $k, ($s[1] / $s[0])) }
+$acc.GetEnumerator() | Sort-Object Name | ForEach-Object {
+  if ($_.Value.s -gt 0) {
+    Write-Host ("    分包 {0,-24} {1,6:P1}" -f $_.Key, ($_.Value.c / $_.Value.s))
+  }
 }
 
 Step "3/6 构建"

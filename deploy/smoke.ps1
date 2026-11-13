@@ -35,13 +35,13 @@ Check "取得预约单号" ($bid -ne "") $bid
 Invoke-WebRequest "$Base/user/pay" -Method Post -Body @{bookingId=$bid} `
   -WebSession $s -MaximumRedirection 0 -UseBasicParsing -ErrorAction SilentlyContinue | Out-Null
 $mock = Invoke-WebRequest "$Base/mock" -UseBasicParsing
-$pid = ""
+$payId = ""
 foreach ($row in ($mock.Content -split "<tr")) {
-  if ($row -match [regex]::Escape($bid) -and $row -match 'value="(P\w+)"') { $pid = $Matches[1]; break }
+  if ($row -match [regex]::Escape($bid) -and $row -match 'value="(P\w+)"') { $payId = $Matches[1]; break }
 }
-Check "渠道生成支付单" ($pid -ne "") $pid
-if ($pid -ne "") {
-  Invoke-WebRequest "$Base/mock/pay" -Method Post -Body @{paymentId=$pid;action="success"} `
+Check "渠道生成支付单" ($payId -ne "") $payId
+if ($payId -ne "") {
+  Invoke-WebRequest "$Base/mock/pay" -Method Post -Body @{paymentId=$payId;action="success"} `
     -UseBasicParsing | Out-Null
   $p3 = Invoke-WebRequest "$Base/user" -WebSession $s -UseBasicParsing
   $row = ($p3.Content -split "<tr" | Where-Object { $_ -match [regex]::Escape($bid) }) -join ""
