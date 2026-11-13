@@ -64,6 +64,13 @@ func mustSetup(t *testing.T) {
 	if err := db.Seed(ctx, clk.Now()); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
+	// 迁移与种子需可重复执行（重启/流水线重跑场景）
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("migrate twice: %v", err)
+	}
+	if err := db.Seed(ctx, clk.Now()); err != nil {
+		t.Fatalf("seed twice: %v", err)
+	}
 	paySvc = &payment.Service{Conn: db.Conn, Clock: clk, Secret: testSecret}
 	bookSvc = &booking.Service{
 		Conn: db.Conn, Clock: clk,
@@ -299,4 +306,6 @@ func TestAllInterfacesAndStates(t *testing.T) {
 	t.Run("后台清扫x2", testSweeperTwice)
 	t.Run("Redis会话x2", testSessionRedisTwice)
 	t.Run("渠道异常路径x2", testChannelErrorPathsTwice)
+	t.Run("未知单号映射x2", testUnknownRequestsTwice)
+	t.Run("取消后到账退款x2", testLateCancelledRefundTwice)
 }

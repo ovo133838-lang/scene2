@@ -2,6 +2,14 @@ package store
 
 import "testing"
 
+func TestOpenInvalidServer(t *testing.T) {
+	// 不可达地址：建库失败应返回错误而不是静默成功
+	db, err := Open("root:root@tcp(127.0.0.1:1)/?parseTime=true&timeout=200ms", "petshop_not_exist")
+	if err == nil {
+		t.Fatalf("不可达 MySQL 不应成功，db=%v", db)
+	}
+}
+
 func TestHashPassword(t *testing.T) {
 	a := HashPassword("demo123")
 	if len(a) != 64 {

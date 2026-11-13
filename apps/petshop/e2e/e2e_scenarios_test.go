@@ -34,6 +34,10 @@ func testLoginTwice(t *testing.T) {
 		if !strings.Contains(r.Header.Get("Location"), "err=") {
 			t.Fatalf("round%d: 错误口令应被拒绝", i)
 		}
+		r = bad.postForm("/login", url.Values{"username": {"nobody"}, "password": {"demo123"}})
+		if !strings.Contains(r.Header.Get("Location"), "err=") {
+			t.Fatalf("round%d: 不存在账号应被拒绝", i)
+		}
 	}
 }
 
@@ -762,6 +766,86 @@ func testChannelErrorPathsTwice(t *testing.T) {
 			t.Fatalf("round%d: 支付失败不得改变预约状态，got %s", i, st)
 		}
 	}
+}
+
+// testLateCancelledRefundTwice 待付款取消后渠道仍成功：钱已收、单已取消 → 原路退款且幂等。
+func testLateCancelledRefundTwice(t *testing.T) {
+	slot := mgrSlot(t, at(30*time.Hour), at(31*time.Hour), 3)
+	u1 := newClientWith(t, "u1")
+	bid := bookAt(t, u1, "u1", slot)
+	payAt(t, u1, bid)
+	expectOK(t, u1, "/user/cancel", url.Values{"bookingId": {bid}}, "已取消")
+	if st := bookingStatus(t, bid); st != model.BookingCancelled {
+		t.Fatalf("取消后应 cancelled，got %s", st)
+	}
+	txn := "TXNLC" + bid[len(bid)-4:]
+	code, body := notify(t, txn, bid, model.AmountCents, "success", "")
+	if code != 200 || !strings.Contains(body, "late_cancelled") {
+		t.Fatalf("取消后成功通知应 late_cancelled: %d %s", code, body)
+	}
+	if st := bookingStatus(t, bid); st != model.BookingCancelled {
+		t.Fatalf("不得复活已取消预约，got %s", st)
+	}
+	var refunds int64
+	mustQuery(t, &refunds, "SELECT COUNT(*) FROM refunds WHERE booking_id=?", bid)
+	if refunds != 1 {
+		t.Fatalf("应自动退款一次，got %d", refunds)
+	}
+	// 重复 InitRefund 幂等：已有退款单不再新建
+	if err := paySvc.InitRefund(t.Context(), bid); err != nil {
+		t.Fatalf("重复退款应幂等，got %v", err)
+	}
+	if err := paySvc.InitRefund(t.Context(), "BUNKNOWN00000000000000"); err == nil {
+		t.Fatalf("未知预约退款应报错")
+	}
+	mustQuery(t, &refunds, "SELECT COUNT(*) FROM refunds WHERE booking_id=?", bid)
+	if refunds != 1 {
+		t.Fatalf("幂等后仍应只有一条退款，got %d", refunds)
+	}
+}
+
+// testPayStateGuardsTwice 已支付/已取消订单不可再次发起支付。
+func testPayStateGuardsTwice(t *testing.T) {
+	slot := mgrSlot(t, at(31*time.Hour), at(32*time.Hour), 3)
+	u2 := newClientWith(t, "u2")
+	bid := bookAt(t, u2, "u2", slot)
+	payAt(t, u2, bid)
+	paySuccess(t, u2, bid)
+	expectErr(t, u2, "/user/pay", url.Values{"bookingId": {bid}}, "状态")
+
+	slot2 := mgrSlot(t, at(32*time.Hour), at(33*time.Hour), 3)
+	bid2 := bookAt(t, u2, "u2", slot2)
+	expectOK(t, u2, "/user/cancel", url.Values{"bookingId": {bid2}}, "已取消")
+	expectErr(t, u2, "/user/pay", url.Values{"bookingId": {bid2}}, "状态")
+}
+
+// testUnknownRequestsTwice 不存在/越权单号的统一错误映射（各操作入口）。
+func testUnknownRequestsTwice(t *testing.T) {
+	const ghost = "BUNKNOWN00000000000000"
+	u1 := newClientWith(t, "u1")
+	rep := newClientWith(t, "reception")
+	staff := newClientWith(t, "staff")
+	svc := newClientWith(t, "service")
+	mgr := newClientWith(t, "manager")
+	for i := 1; i <= 2; i++ {
+		expectErr(t, u1, "/user/cancel", url.Values{"bookingId": {ghost}}, "记录不存在")
+		expectErr(t, u1, "/user/pay", url.Values{"bookingId": {ghost}}, "未知订单")
+		expectErr(t, rep, "/front/checkin", url.Values{"bookingId": {ghost}}, "记录不存在")
+		expectErr(t, staff, "/staff/start", url.Values{"bookingId": {ghost}}, "记录不存在")
+		expectErr(t, staff, "/staff/finish", url.Values{"bookingId": {ghost}}, "记录不存在")
+		expectErr(t, mgr, "/manager/noshow", url.Values{"bookingId": {ghost}, "reason": {"未到店"}}, "记录不存在")
+		expectErr(t, svc, "/service/review", url.Values{"bookingId": {ghost}, "decision": {"approve"}}, "记录不存在")
+		expectErr(t, svc, "/service/refund-retry", url.Values{"refundId": {"RUNKNOWN"}}, "不存在")
+		expectErr(t, u1, "/user/book", url.Values{"petId": {"1"}, "slotId": {"999999"}}, "时段不存在")
+		foreign := mgrSlot(t, at(3*time.Hour+time.Duration(i)*time.Minute), at(4*time.Hour+time.Duration(i)*time.Minute), 3)
+		expectErr(t, newClientWith(t, "u2"), "/user/book", url.Values{"petId": {"1"}, "slotId": {fmt.Sprint(foreign)}}, "无权")
+	}
+	// 临近取消未填原因
+	slot := mgrSlot(t, at(90*time.Minute), at(150*time.Minute), 3)
+	bid := bookAt(t, u1, "u1", slot)
+	payAt(t, u1, bid)
+	paySuccess(t, u1, bid)
+	expectErr(t, u1, "/user/cancel", url.Values{"bookingId": {bid}, "reason": {"  "}}, "原因")
 }
 
 // ---------- 帮助 ----------

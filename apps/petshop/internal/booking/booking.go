@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -153,6 +154,7 @@ type CancelOutcome struct {
 //   - 已确认且距开始 < CancelWindow → 须填原因，进入客服审核（保持名额，不得核销）。
 func (s *Service) CancelByUser(ctx context.Context, userID int64, bookingID, reason string) (*CancelOutcome, error) {
 	now := s.now()
+	reason = strings.TrimSpace(reason)
 	out := &CancelOutcome{}
 
 	err := s.Conn.Transact(func(session sqlx.Session) error {
