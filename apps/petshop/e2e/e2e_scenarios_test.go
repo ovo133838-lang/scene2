@@ -9,10 +9,49 @@ import (
 	"time"
 
 	"petshop/internal/model"
+	"petshop/internal/payment"
 	"petshop/internal/session"
 )
 
-// ---------- 场景 ----------
+// mustExec 执行写语句，失败即用例失败。
+func mustExec(t *testing.T, q string, args ...any) {
+	t.Helper()
+	if _, err := db.Conn.Exec(q, args...); err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+}
+
+// testStateConflictNotifyTwice 已确认订单又出现待支付单时，成功回调应判状态冲突拒绝。
+func testStateConflictNotifyTwice(t *testing.T) {
+	slot := mgrSlot(t, at(35*time.Hour), at(36*time.Hour), 3)
+	u1 := newClientWith(t, "u1")
+	bid := bookAt(t, u1, "u1", slot)
+	payAt(t, u1, bid)
+	paySuccess(t, u1, bid)
+	for i := 1; i <= 2; i++ {
+		txn := fmt.Sprintf("TXNSC%d%s", i, bid[len(bid)-4:])
+		// 确定性 ID：保证 ORDER BY id DESC 能取到本轮插入的支付单
+		mustExec(t, "INSERT INTO payments(id,booking_id,amount,status,channel_txn,created_at) "+
+			"VALUES(?,?,?,?,?,NOW())", "PSC"+txn, bid, model.AmountCents, model.PayInitiated, txn)
+		n := payment.Notify{ChannelTxn: txn, BookingID: bid, Amount: model.AmountCents, Result: "success"}
+		handled, err := paySvc.HandleNotify(t.Context(), n, paySvc.Sign(n))
+		if err == nil || !strings.Contains(handled, "state_conflict") {
+			t.Fatalf("round%d: 已确认单重复回调应状态冲突，got handled=%s err=%v", i, handled, err)
+		}
+	}
+	// BuildNotify：未知支付单报错；已收款单缺省复用渠道交易号
+	if _, err := paySvc.BuildNotify(t.Context(), "999999", ""); err == nil {
+		t.Fatalf("未知支付单应报错")
+	}
+	var pid string
+	mustQuery(t, &pid, "SELECT id FROM payments WHERE booking_id=? ORDER BY id LIMIT 1", bid)
+	n1, err := paySvc.BuildNotify(t.Context(), pid, "")
+	if err != nil || n1.ChannelTxn == "" {
+		t.Fatalf("BuildNotify 应复用已存交易号: %v %q", err, n1.ChannelTxn)
+	}
+}
+
+// ---------- 帮助 ----------
 
 func testHealthTwice(t *testing.T) {
 	for i := 1; i <= 2; i++ {

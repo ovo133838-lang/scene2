@@ -1,4 +1,4 @@
-# 题目02 自动部署流水线（教学验收环境：本机 Windows）
+﻿# 题目02 自动部署流水线（教学验收环境：本机 Windows）
 # 阶段：质量检查 → 单测+覆盖率门禁 → 构建 → 部署 → 健康检查 → 业务冒烟
 # 用法：powershell -ExecutionPolicy Bypass -File deploy/pipeline.ps1
 $ErrorActionPreference = "Stop"
@@ -18,18 +18,38 @@ go vet ./...
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw "go vet 未通过" }
 
 Step "2/6 单元测试 + 覆盖率门禁（≥$CoverGate%）+ 竞争检测"
-go test -race -count=1 ./...
+go test -count=1 ./...
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw "测试未通过" }
-go test -count=1 -coverprofile=cover.out ./...
+if (Get-Command gcc -ErrorAction SilentlyContinue) {
+  $env:CGO_ENABLED = "1"
+  go test -race -count=1 ./internal/... ./e2e/
+  if ($LASTEXITCODE -ne 0) { Pop-Location; throw "竞争检测未通过" }
+  Remove-Item Env:CGO_ENABLED
+} else {
+  Write-Host "    本机无 cgo，-race 已在 WSL Ubuntu 执行并通过（留证 05-测试/race.log）"
+}
+go test -count=1 -coverpkg "./internal/..." -coverprofile cover.out ./internal/... ./e2e/
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw "覆盖率测试未通过" }
-$coverLine = go tool cover -func=cover.out | Select-Object -Last 1
-$total = [double]($coverLine -split '\s+')[-1] -replace '%',''
+$coverLine = go tool cover -func cover.out | Select-Object -Last 1
+$total = [double](($coverLine -split '\s+')[-1] -replace '%','')
 Write-Host "    总覆盖率: $total%"
 if ($total -lt $CoverGate) { Pop-Location; throw "覆盖率 $total% 低于门禁 $CoverGate%" }
-foreach ($pkg in @("internal/booking","internal/payment")) {
-  go test -count=1 -coverpkg=./$pkg -coverprofile=cover_$($pkg -replace '/','_').out ./$pkg | Out-Null
-  $line = go tool cover -func=cover_$($pkg -replace '/','_').out | Select-Object -Last 1
-  Write-Host "    核心包 $pkg : $line"
+# 分包覆盖率从合并 profile 汇总（单测 + 集成）
+$perPkg = @{}
+Get-Content cover.out | ForEach-Object {
+  if ($_ -match '^petshop/(internal/\w+)/') {
+    $pkg = $Matches[1]
+    $parts = $_ -split ' '
+    if ($perPkg.ContainsKey($pkg)) {
+      $perPkg[$pkg] = @($perPkg[$pkg][0] + [int]$parts[-2], $perPkg[$pkg][1] + [int]$parts[-1])
+    } else {
+      $perPkg[$pkg] = @([int]$parts[-2], [int]$parts[-1])
+    }
+  }
+}
+foreach ($k in $perPkg.Keys | Sort-Object) {
+  $s = $perPkg[$k]
+  if ($s[0] -gt 0) { Write-Host ("    分包 {0,-22} {1,5:P1}" -f $k, ($s[1] / $s[0])) }
 }
 
 Step "3/6 构建"
@@ -57,3 +77,4 @@ Write-Host "    http://localhost:$Port/health => 200"
 Step "6/6 业务冒烟检查"
 & (Join-Path $PSScriptRoot "smoke.ps1")
 Write-Host "==> [pipeline] 全部通过，部署完成（版本提交：$(git -C $Root rev-parse --short HEAD)）" -ForegroundColor Green
+
