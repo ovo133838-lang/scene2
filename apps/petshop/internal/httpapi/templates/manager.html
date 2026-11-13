@@ -1,0 +1,42 @@
+{{template "head" .}}
+<section>
+  <h2><span class="dot"></span>发布可预约时段</h2>
+  <p class="sec-sub">明确起止时间与容量（默认 3 个名额）· 已开始的时段不可被预约</p>
+  <form method="post" action="/manager/slot" style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">
+    <div><span class="note" style="display:block;margin-bottom:5px">开始时间</span>
+      <input type="datetime-local" name="start" required></div>
+    <div><span class="note" style="display:block;margin-bottom:5px">结束时间</span>
+      <input type="datetime-local" name="end" required></div>
+    <div><span class="note" style="display:block;margin-bottom:5px">容量</span>
+      <input name="capacity" value="3" size="4"></div>
+    <button class="btn pri">创建时段</button>
+  </form>
+</section>
+
+<section>
+  <h2><span class="dot"></span>未到店标记</h2>
+  <p class="sec-sub">时段已结束、仍为已确认的预约 · 按题面约定标记后不自动退款</p>
+  <table><thead><tr><th>单号</th><th>用户 / 宠物</th><th>时段</th><th style="width:250px">操作</th></tr></thead><tbody>
+  {{range .NoShow}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td>
+    <td>{{.Username}}<br><small class="note">{{.PetName}}</small></td>
+    <td>{{fmtTime .SlotStart}} ~ {{fmtTime .SlotEnd}}</td>
+    <td><form class="inline" method="post" action="/manager/noshow"><input type="hidden" name="bookingId" value="{{.ID}}">
+      原因：<input name="reason" size="18" required> <button class="btn warn">标记未到店</button></form></td>
+  </tr>
+  {{else}}<tr><td colspan="4" class="empty">无待标记预约</td></tr>{{end}}</tbody></table>
+</section>
+
+<section>
+  <h2><span class="dot"></span>收店核查 · 今日经营结果</h2>
+  <p class="sec-sub">已服务 / 取消退款 / 未到店 / 退款失败分别核查 · 金额从记录核算，不把已付款都计作已完成服务</p>
+  <table><thead><tr><th>分类</th><th>笔数 / 金额</th><th>口径说明</th></tr></thead><tbody>
+  {{range .Summary}}<tr>
+    <td style="font-weight:600">{{.Label}}</td>
+    <td><span class="st {{if gt .Count 0}}st-confirmed{{else}}st-cancelled{{end}}">{{.Count}}</span></td>
+    <td><small class="note">{{.Note}}</small></td>
+  </tr>{{end}}</tbody></table>
+</section>
+</div>
+<footer>爪印云 · 题目02 宠物门店预约经营场景</footer>
+</body></html>

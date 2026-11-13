@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>题目02 原型 — 宠物门店预约（轻量原型，非最终实现）</title>
+<style>
+  body{font-family:"Microsoft YaHei",sans-serif;margin:0;background:#f5f6f8;color:#222}
+  header{background:#3a6ea5;color:#fff;padding:10px 20px}
+  .tabs{display:flex;gap:4px;padding:8px 20px 0;background:#3a6ea5}
+  .tab{padding:8px 16px;background:#d7e3f0;border-radius:6px 6px 0 0;cursor:pointer;font-size:14px}
+  .tab.on{background:#f5f6f8;font-weight:bold}
+  .page{display:none;padding:16px 20px}
+  .page.on{display:block}
+  h2{margin:6px 0 12px;font-size:18px}
+  table{border-collapse:collapse;width:100%;background:#fff;font-size:13px}
+  th,td{border:1px solid #d0d5db;padding:6px 8px;text-align:left}
+  th{background:#eef2f6}
+  .btn{display:inline-block;padding:3px 10px;margin:1px 2px;border-radius:4px;border:1px solid #999;background:#fff;cursor:pointer;font-size:12px}
+  .btn.pri{background:#3a6ea5;color:#fff;border-color:#3a6ea5}
+  .btn.warn{background:#c0392b;color:#fff;border-color:#c0392b}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .st{display:inline-block;padding:1px 7px;border-radius:3px;color:#fff;font-size:12px}
+  .s-pay{background:#e67e22}.s-ok{background:#27ae60}.s-close{background:#95a5a6}
+  .s-anomaly{background:#c0392b}.s-review{background:#8e44ad}.s-svc{background:#2980b9}.s-done{background:#16a085}
+  .note{background:#fff8e1;border:1px solid #e6d080;padding:8px 12px;border-radius:4px;font-size:13px;margin:10px 0}
+  .sec{margin-top:16px}
+  form.inline{background:#fff;border:1px solid #d0d5db;padding:10px;border-radius:4px;font-size:13px;margin-bottom:10px}
+  form.inline input,form.inline select,form.inline textarea{margin:2px 8px 2px 0;padding:3px 6px}
+</style>
+</head>
+<body>
+<header><b>宠物门店预约系统 · 原型 v1</b>　门店：萌宠洗护旗舰店　项目：基础洗护（9900 分）</header>
+
+<div class="tabs">
+  <div class="tab on" onclick="go(0)">宠物主人（用户页）</div>
+  <div class="tab" onclick="go(1)">前台 / 服务人员</div>
+  <div class="tab" onclick="go(2)">客服处理</div>
+  <div class="tab" onclick="go(3)">店长日清</div>
+  <div class="tab" onclick="go(4)">异常与状态说明</div>
+</div>
+
+<!-- ============ 用户页 ============ -->
+<div class="page on" id="p0">
+  <div class="note">原型状态演示：u2 / 宠物「毛毛」视角。可点击按钮切换状态，观察各状态展示。</div>
+  <div class="sec">
+    <b>今日可约时段（每时段 3 个名额）</b>
+    <table>
+      <tr><th>时段</th><th>名额</th><th>我的预约</th><th>操作</th></tr>
+      <tr><td>周六 14:00–15:00</td><td>1 / 3</td><td><span class="st s-pay">待付款（剩余 04:12）</span></td><td>
+        <button class="btn pri" onclick="alert('跳转模拟支付渠道')">去支付 9900 分</button>
+        <button class="btn" onclick="setState(0,'cancelled')">取消预约</button></td></tr>
+      <tr><td>周六 15:00–16:00</td><td>3 / 3（已满）</td><td>—</td><td><button class="btn" disabled>预约</button></td></tr>
+      <tr><td>周六 16:00–17:00</td><td>2 / 3</td><td>—</td><td><button class="btn pri" onclick="setState(0,'pending')">预约</button></td></tr>
+    </table>
+  </div>
+  <div class="sec">
+    <b>我的预约与订单记录</b>
+    <table id="uList">
+      <tr><th>预约号</th><th>时段</th><th>宠物</th><th>状态</th><th>金额/退款</th><th>操作</th></tr>
+      <tr id="uRow"><td>B20261114002</td><td>14:00–15:00</td><td>毛毛</td><td id="uSt"><span class="st s-pay">待付款</span></td><td id="uAmt">应支付 9900 分</td><td id="uOps">—</td></tr>
+      <tr><td>B20261113001</td><td>昨日 10:00–11:00</td><td>毛毛</td><td><span class="st s-done">已完成</span></td><td>已支付 9900 分</td><td>—</td></tr>
+    </table>
+  </div>
+  <div class="note">异常展示：若预约已超时关闭后渠道通知支付成功 → 本页显示「异常支付处理中」，金额显示「退款中 9900 分」；退款成功显示「已退款 9900 分」。</div>
+</div>
+
+<!-- ============ 前台 ============ -->
+<div class="page" id="p1">
+  <div class="note">前台只能核销：本店 + 已确认 + 无待审取消申请。重复核销被拒绝。</div>
+  <div class="sec"><b>今日待核销（已确认）</b>
+    <table>
+      <tr><th>预约号</th><th>时段</th><th>宠物</th><th>状态</th><th>操作</th></tr>
+      <tr><td>B20261114001</td><td>14:00–15:00</td><td>豆豆(u1)</td><td><span class="st s-ok">已确认</span></td><td><button class="btn pri" onclick="alert('核销成功 → 已核销')">核销到店</button></td></tr>
+      <tr><td>B20261114003</td><td>15:00–16:00</td><td>雪球(u3)</td><td><span class="st s-review">取消待审核</span></td><td><button class="btn" disabled title="有待审取消申请，不可核销">核销到店</button></td></tr>
+      <tr><td>B20261114002</td><td>14:00–15:00</td><td>毛毛(u2)</td><td><span class="st s-svc">已核销 / 服务中</span></td><td><button class="btn pri">登记开始</button> <button class="btn pri">登记完成</button></td></tr>
+    </table>
+  </div>
+  <div class="note">非本店员工登录时：列表为空并提示「无本店权限」。服务完成只记一次收入，重复点击返回「该预约已登记完成」。</div>
+</div>
+
+<!-- ============ 客服 ============ -->
+<div class="page" id="p2">
+  <div class="sec"><b>临近开始取消待审核（&lt;2 小时，须填原因）</b>
+    <table>
+      <tr><th>预约号</th><th>用户/宠物</th><th>时段</th><th>距开始</th><th>取消原因</th><th>操作</th></tr>
+      <tr><td>B20261114003</td><td>u3/雪球</td><td>15:00–16:00</td><td>45 分钟</td><td>临时有事无法到店</td><td><button class="btn pri">批准</button> <button class="btn warn">拒绝</button></td></tr>
+    </table>
+  </div>
+  <div class="sec"><b>退款失败待跟进</b>
+    <table>
+      <tr><th>退款单</th><th>关联预约</th><th>金额</th><th>失败原因</th><th>操作</th></tr>
+      <tr><td>R20261114001</td><td>B20261114004</td><td>9900 分</td><td>渠道返回：余额不足</td><td><button class="btn pri">重试退款</button></td></tr>
+    </table>
+  </div>
+  <div class="sec"><b>异常支付（超时关闭后收到成功通知）</b>
+    <table>
+      <tr><th>订单</th><th>渠道交易号</th><th>金额</th><th>发现时间</th><th>操作</th></tr>
+      <tr><td>B20261114005（已关闭）</td><td>TXN90011</td><td>9900 分</td><td>14:32</td><td><button class="btn pri">核实并发起退款</button></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 店长 ============ -->
+<div class="page" id="p3">
+  <div class="sec"><b>时段管理</b>
+    <form class="inline">创建时段：<input type="date"><input type="time"> 至 <input type="time"> <button class="btn pri" type="button" onclick="alert('创建时段：校验起止时间后发布')">创建</button></form>
+    <table>
+      <tr><th>时段</th><th>有效预约</th><th>已完成</th><th>已取消</th><th>未到店</th></tr>
+      <tr><td>14:00–15:00</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+    </table>
+  </div>
+  <div class="sec"><b>未到店标记（时段结束后）</b>
+    <form class="inline">预约 <input value="B20261114006"> 未到店，原因：<input value="主人未到店未联系" size="24"> <button class="btn warn" type="button" onclick="alert('标记未到店，不自动退款')">标记未到店</button></form>
+  </div>
+  <div class="sec"><b>收店核查（金额可从流水核查）</b>
+    <table>
+      <tr><th>类型</th><th>笔数</th><th>金额</th></tr>
+      <tr><td>已服务（完成）</td><td>2</td><td>已收款 19800 分</td></tr>
+      <tr><td>取消退款</td><td>1</td><td>已收款 9900 / 已退款 9900 分</td></tr>
+      <tr><td>未到店</td><td>1</td><td>已收款 9900 分（未退，题面约定不自动退款）</td></tr>
+      <tr><td>退款待处理</td><td>1</td><td>已收款 9900 / 退款失败 9900 分（待跟进）</td></tr>
+      <tr><td>超时关闭</td><td>1</td><td>0（未收款；迟到支付已转异常）</td></tr>
+      <tr><td><b>合计</b></td><td><b>已收款 49500</b></td><td><b>已退款 9900 · 未退款 19800（其中 9900 退款失败待跟进）</b></td></tr>
+    </table>
+  </div>
+  <div class="note">核查口径：已收款 = 支付流水合计；已完成服务 ≠ 已收款（未到店、退款、异常支付须分别展示）。</div>
+</div>
+
+<!-- ============ 异常与状态说明 ============ -->
+<div class="page" id="p4">
+  <div class="sec"><b>预约状态机</b>
+    <pre style="background:#fff;border:1px solid #d0d5db;padding:10px;font-size:12px">
+待付款(占位5min) ─付款成功→ 已确认 ─核销→ 已核销 ─开始→ 服务中 ─完成→ 已完成
+   │取消 │超时              │取消≥2h自动受理 / 取消&lt;2h→待审核(批准→已取消, 拒绝→已确认)
+   ▼    ▼                  │时段结束未到→ 店长标记未到店
+ 超时关闭                 ▼
+   └迟到成功通知→ 异常支付→ 客服退款      已取消→ 退款中→ 成功/失败(客服重试)
+    </pre>
+  </div>
+  <div class="sec"><b>异常场景与预期结果</b>
+    <table>
+      <tr><th>场景</th><th>系统行为</th></tr>
+      <tr><td>并发 20 请求抢 3 名额</td><td>恰好 3 个成功，其余「名额不足」</td></tr>
+      <tr><td>重复支付通知</td><td>首次确认成功，后续幂等返回，不重复记款</td></tr>
+      <tr><td>支付金额不符 / 验签失败 / 未知订单</td><td>记录异常通知，可查询处理结果</td></tr>
+      <tr><td>超时关闭后收到成功支付</td><td>不恢复预约与名额，进入异常支付，客服退款</td></tr>
+      <tr><td>取消与核销并发</td><td>事务保证唯一合法结果，后到者失败并说明原因</td></tr>
+      <tr><td>重复核销 / 重复完成</td><td>拒绝，不重复记收入</td></tr>
+      <tr><td>退款失败</td><td>保留待处理，客服重试；取消状态不因此复活</td></tr>
+      <tr><td>同一渠道交易号出现在两个订单</td><td>第二个通知拒绝并记录</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+function go(i){for(let k=0;k<5;k++){document.getElementById('p'+k).className='page'+(k===i?' on':'');document.getElementsByClassName('tab')[k].className='tab'+(k===i?' on':'')}}
+function setState(r,s){const st=document.getElementById('uSt'),amt=document.getElementById('uAmt'),ops=document.getElementById('uOps');
+ if(s==='pending'){st.innerHTML='<span class="st s-pay">待付款</span>';amt.textContent='应支付 9900 分';ops.innerHTML='<button class="btn pri" onclick="setState(0,\'ok\')">模拟支付成功</button> <button class="btn" onclick="setState(0,\'cancelled\')">取消</button>'}
+ if(s==='ok'){st.innerHTML='<span class="st s-ok">已确认</span>';amt.textContent='已支付 9900 分';ops.textContent='开始前≥2h可自动取消'}
+ if(s==='cancelled'){st.innerHTML='<span class="st s-close">已取消</span>';amt.textContent='已退款 9900 分（退款状态可查）';ops.textContent='—'}}
+</script>
+</body>
+</html>

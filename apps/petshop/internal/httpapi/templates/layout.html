@@ -1,0 +1,110 @@
+{{define "head"}}<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>爪印云 · 宠物门店预约系统</title>
+<style>
+:root{
+  --bg:#f5f1e8; --card:#fffdf8; --ink:#26332e; --muted:#8a938e; --line:#e7dfd1;
+  --pine:#1f6f54; --pine-deep:#144a38; --amber:#e09b2d; --rose:#c0453c;
+  --shadow:0 12px 32px rgba(38,51,46,.09); --radius:14px;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  background-image:radial-gradient(rgba(31,111,84,.06) 1.3px,transparent 1.3px);
+  background-size:24px 24px;}
+.wrap{max-width:1060px;margin:0 auto;padding:26px 22px 60px}
+
+/* ── 顶栏 ── */
+header{position:sticky;top:0;z-index:9;background:linear-gradient(135deg,var(--pine-deep),var(--pine));
+  color:#f4f0e6;padding:0 26px;display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 4px 18px rgba(20,74,56,.35)}
+.brand{display:flex;align-items:center;gap:12px;padding:13px 0;
+  font-family:"Noto Serif SC","Songti SC","STZhongsong",serif;font-size:19px;letter-spacing:3px;font-weight:700}
+.brand svg{width:30px;height:30px}
+.brand small{font-size:11px;letter-spacing:2px;opacity:.65;display:block;font-weight:400}
+.who{display:flex;align-items:center;gap:12px;font-size:13px}
+.who .role-tag{border:1px solid rgba(244,240,230,.45);border-radius:999px;padding:3px 12px;font-size:12px;letter-spacing:1px}
+.who button{background:rgba(244,240,230,.14);border:1px solid rgba(244,240,230,.4);color:#f4f0e6;
+  border-radius:8px;padding:5px 14px;cursor:pointer;font-size:12px;transition:.2s}
+.who button:hover{background:rgba(244,240,230,.28)}
+
+/* ── 区块卡片 ── */
+section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:20px 24px;margin:22px 0;position:relative;overflow:hidden}
+section::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
+  background:linear-gradient(var(--pine),var(--amber))}
+h2{font-family:"Noto Serif SC","Songti SC",serif;font-size:17px;margin:0 0 4px;letter-spacing:1px;
+  display:flex;align-items:center;gap:10px}
+h2 .dot{width:9px;height:9px;border-radius:50%;background:var(--amber);flex:none}
+.sec-sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+
+/* ── 表格 ── */
+table{border-collapse:collapse;width:100%;font-size:13.5px;background:transparent}
+th{font-weight:600;color:var(--muted);font-size:12px;letter-spacing:1px;text-align:left;
+  padding:8px 10px;border-bottom:2px solid var(--pine)}
+td{padding:10px;border-bottom:1px dashed var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:rgba(31,111,84,.05)}
+.empty{color:var(--muted);text-align:center;padding:26px 0 !important;font-size:13px;letter-spacing:1px}
+.empty::before{content:"— "}.empty::after{content:" —"}
+
+/* ── 控件 ── */
+input,select{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;
+  font-size:13px;color:var(--ink);outline:none;transition:.2s;font-family:inherit}
+input:focus{border-color:var(--pine);box-shadow:0 0 0 3px rgba(31,111,84,.14)}
+button.btn{padding:7px 16px;border-radius:9px;border:1px solid var(--pine);background:#fff;
+  color:var(--pine);cursor:pointer;font-size:12.5px;letter-spacing:1px;transition:.18s;font-family:inherit}
+button.btn:hover{background:rgba(31,111,84,.1);transform:translateY(-1px)}
+button.btn.pri{background:var(--pine);color:#fff;font-weight:600}
+button.btn.pri:hover{background:var(--pine-deep)}
+button.btn.warn{background:var(--rose);border-color:var(--rose);color:#fff}
+button.btn.warn:hover{filter:brightness(.92)}
+form.inline{display:inline-block;margin:2px 6px 2px 0}
+label.radio{margin:0 10px 0 0;font-size:13px;cursor:pointer;white-space:nowrap}
+label.radio input{margin-right:4px;accent-color:var(--pine)}
+
+/* ── 状态胶囊 ── */
+.st{display:inline-block;padding:3px 12px;border-radius:999px;font-size:11.5px;letter-spacing:1px;
+  background:#e8e4da;color:#5c665f;border:1px solid transparent;white-space:nowrap}
+.st-pending_payment{background:#fdf3e0;color:#a86b12;border-color:#f2ddb4}
+.st-confirmed{background:#e2f2ea;color:#1c6b4f;border-color:#bfe0cf}
+.st-cancel_review{background:#ece7f7;color:#5b4a9e;border-color:#d8cef0}
+.st-cancelled{background:#efedea;color:#7a7468}
+.st-checked_in{background:#e1eef7;color:#2b6392;border-color:#c4dcef}
+.st-in_service{background:#e1eef7;color:#2b6392;border-color:#c4dcef}
+.st-completed{background:#2e7d5b;color:#fff;border-color:#2e7d5b}
+.st-closed{background:#efedea;color:#7a7468}
+.st-no_show{background:#54452f;color:#f4efe2;border-color:#54452f}
+.st-payment_anomaly,.st-refund_failed{background:var(--rose);color:#fff;border-color:var(--rose)}
+.st-pay_failed{background:var(--rose);color:#fff;border-color:var(--rose)}
+.st-paid,.st-pay_paid,.st-refund_success{background:#e2f2ea;color:#1c6b4f;border-color:#bfe0cf}
+.st-initiated,.st-pay_initiated,.st-refund_pending{background:#fdf3e0;color:#a86b12;border-color:#f2ddb4}
+.anom{background:var(--rose) !important;color:#fff !important}
+
+/* ── 提示条 ── */
+.flash{display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:11px;
+  font-size:13.5px;margin:18px 0 4px;animation:drop .35s ease}
+.flash::before{content:"";width:8px;height:8px;border-radius:50%;flex:none}
+.flash.ok{background:#e4f2ea;border:1px solid #b9dcc8;color:#1c5c43}.flash.ok::before{background:#2e7d5b}
+.flash.bad{background:#fbe9e7;border:1px solid #efc4bf;color:#8f2f28}.flash.bad::before{background:var(--rose)}
+@keyframes drop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+/* ── 页脚 ── */
+footer{color:var(--muted);font-size:11.5px;text-align:center;letter-spacing:2px;margin-top:34px}
+small.note{color:var(--muted);font-size:12px}
+@media (max-width:760px){td,th{padding:6px}.wrap{padding:14px 10px 40px}section{padding:14px 14px}}
+</style></head><body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 64 64" fill="none"><ellipse cx="32" cy="41" rx="13" ry="11" fill="#f4f0e6"/><ellipse cx="15" cy="24" rx="6.5" ry="8.5" transform="rotate(-18 15 24)" fill="#f4f0e6"/><ellipse cx="49" cy="24" rx="6.5" ry="8.5" transform="rotate(18 49 24)" fill="#f4f0e6"/><ellipse cx="26" cy="13" rx="5.5" ry="7.5" fill="#f4f0e6"/><ellipse cx="39" cy="13" rx="5.5" ry="7.5" fill="#f4f0e6"/></svg>
+    <span>爪印云<small>萌宠洗护旗舰店 · 预约经营系统</small></span>
+  </div>
+  <div class="who"><span>{{.Auth.Name}}</span><span class="role-tag">{{.Auth.Role}}</span>
+    <form method="post" action="/logout"><button>退出登录</button></form></div>
+</header>
+<div class="wrap">
+{{if .Msg}}<div class="flash ok">{{.Msg}}</div>{{end}}
+{{if .Err}}<div class="flash bad">{{.Err}}</div>{{end}}
+{{end}}

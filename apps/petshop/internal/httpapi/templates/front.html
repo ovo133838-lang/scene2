@@ -1,0 +1,45 @@
+{{template "head" .}}
+<section>
+  <h2><span class="dot"></span>待核销 · 已确认</h2>
+  <p class="sec-sub">仅前台可核销 · 存在待审取消申请的预约不会出现在本表（名额保留、禁止核销）</p>
+  {{if eq .Auth.Role "reception"}}
+  <table><thead><tr><th>单号</th><th>时段</th><th>用户</th><th>宠物</th><th>状态</th><th style="width:110px">操作</th></tr></thead><tbody>
+  {{range .Confirmed}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td>
+    <td>{{fmtTime .SlotStart}} ~ {{fmtTime .SlotEnd}}</td>
+    <td>{{.Username}}</td><td>{{.PetName}}</td>
+    <td><span class="st st-confirmed">{{statusLabel .Status}}</span></td>
+    <td><form class="inline" method="post" action="/front/checkin"><input type="hidden" name="bookingId" value="{{.ID}}"><button class="btn pri">核销到店</button></form></td>
+  </tr>
+  {{else}}<tr><td colspan="6" class="empty">无待核销预约</td></tr>{{end}}</tbody></table>
+  {{else}}<p class="sec-sub">前台登录后可见核销操作。</p>{{end}}
+</section>
+
+{{if eq .Auth.Role "staff"}}
+<section>
+  <h2><span class="dot"></span>已核销 · 登记服务开始</h2>
+  <p class="sec-sub">服务人员登录后可对已核销预约登记开始</p>
+  <table><thead><tr><th>单号</th><th>宠物</th><th>状态</th><th style="width:110px">操作</th></tr></thead><tbody>
+  {{range .CheckedIn}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td><td>{{.PetName}}</td>
+    <td><span class="st st-checked_in">{{statusLabel .Status}}</span></td>
+    <td><form class="inline" method="post" action="/staff/start"><input type="hidden" name="bookingId" value="{{.ID}}"><button class="btn pri">登记开始</button></form></td>
+  </tr>
+  {{else}}<tr><td colspan="4" class="empty">无待开始服务</td></tr>{{end}}</tbody></table>
+</section>
+
+<section>
+  <h2><span class="dot"></span>服务中 · 登记完成</h2>
+  <p class="sec-sub">完成只登记一次，重复操作将被拒绝且不重复计收入</p>
+  <table><thead><tr><th>单号</th><th>宠物</th><th>状态</th><th style="width:110px">操作</th></tr></thead><tbody>
+  {{range .InService}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td><td>{{.PetName}}</td>
+    <td><span class="st st-in_service">{{statusLabel .Status}}</span></td>
+    <td><form class="inline" method="post" action="/staff/finish"><input type="hidden" name="bookingId" value="{{.ID}}"><button class="btn pri">登记完成</button></form></td>
+  </tr>
+  {{else}}<tr><td colspan="4" class="empty">无进行中服务</td></tr>{{end}}</tbody></table>
+</section>
+{{else}}<section><p class="sec-sub">服务人员登录后可见开始 / 完成登记操作。</p></section>{{end}}
+</div>
+<footer>爪印云 · 题目02 宠物门店预约经营场景</footer>
+</body></html>
