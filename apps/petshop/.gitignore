@@ -1,0 +1,5 @@
+# 本地构建与运行产物（不提交）
+*.exe
+*.log
+*.out
+cover.html

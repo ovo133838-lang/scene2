@@ -38,10 +38,11 @@ CREATE TABLE IF NOT EXISTS bookings (
   review_decision VARCHAR(16) NULL,
   review_note VARCHAR(255) NULL,
   no_show_reason VARCHAR(255) NULL,
+  active TINYINT NULL,          -- 1=有效占用态；终态置 NULL（NULL 不参与唯一约束，允许同宠物同时段历史多次）
   created_at DATETIME NOT NULL,
   paid_at DATETIME NULL,
   pay_deadline DATETIME NOT NULL,
-  UNIQUE KEY uk_slot_pet (slot_id, pet_id),
+  UNIQUE KEY uk_slot_pet_active (slot_id, pet_id, active),
   KEY idx_bookings_status (status),
   CONSTRAINT fk_bookings_slot FOREIGN KEY (slot_id) REFERENCES time_slots(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -96,6 +97,19 @@ CREATE TABLE IF NOT EXISTS service_records (
   operator_id BIGINT NOT NULL,
   created_at DATETIME NOT NULL,
   UNIQUE KEY uk_service_booking_action (booking_id, action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS complaints (
+  id VARCHAR(32) PRIMARY KEY,
+  booking_id VARCHAR(32) NOT NULL,
+  user_id BIGINT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  decision_note VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL,
+  handled_at DATETIME NULL,
+  UNIQUE KEY uk_complaints_booking (booking_id),
+  KEY idx_complaints_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS audit_logs (

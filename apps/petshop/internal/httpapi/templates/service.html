@@ -1,0 +1,90 @@
+{{template "head" .}}
+<section>
+  <h2><span class="dot"></span>取消待审核</h2>
+  <p class="sec-sub">临近开始（&lt;2 小时）的取消申请 · 批准则退款并释放名额，拒绝则恢复为已确认（可核销）</p>
+  <table><thead><tr><th>单号</th><th>用户 / 宠物</th><th>时段</th><th>取消原因</th><th style="width:260px">操作</th></tr></thead><tbody>
+  {{range .Reviews}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td>
+    <td>{{.Username}}<br><small class="note">{{.PetName}}</small></td>
+    <td>{{fmtTime .SlotStart}}</td>
+    <td style="color:#8f2f28">{{.CancelReason}}</td>
+    <td>
+      <form class="inline" method="post" action="/service/review">
+        <input type="hidden" name="bookingId" value="{{.ID}}"><input type="hidden" name="decision" value="approve">
+        <input name="note" placeholder="审批备注" size="10"><button class="btn pri">批准</button></form>
+      <form class="inline" method="post" action="/service/review">
+        <input type="hidden" name="bookingId" value="{{.ID}}"><input type="hidden" name="decision" value="reject">
+        <input name="note" placeholder="拒绝原因" size="10"><button class="btn warn">拒绝</button></form>
+    </td>
+  </tr>
+  {{else}}<tr><td colspan="5" class="empty">无待审核取消申请</td></tr>{{end}}</tbody></table>
+</section>
+
+<section>
+  <h2><span class="dot"></span>售后服务待处理</h2>
+  <p class="sec-sub">仅「服务已完成」的预约可申请 · 批准按原支付单全额退款，驳回须填写说明（用户可见）</p>
+  <table><thead><tr><th>售后单</th><th>预约</th><th>用户 / 宠物</th><th>原因</th><th>申请时间</th><th style="width:280px">操作</th></tr></thead><tbody>
+  {{range .Aftercare}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td>
+    <td style="font-size:12px;color:var(--muted)">{{.BookingID}}</td>
+    <td>{{.Username}}<br><small class="note">{{.PetName}} · {{.Amount}} 分</small></td>
+    <td style="color:#8f2f28">{{.Reason}}</td>
+    <td><small class="note">{{fmtTime .CreatedAt}}</small></td>
+    <td>
+      <form class="inline" method="post" action="/service/complaint">
+        <input type="hidden" name="complaintId" value="{{.ID}}"><input type="hidden" name="decision" value="approve">
+        <input name="note" placeholder="处理说明" size="10"><button class="btn pri">批准退款</button></form>
+      <form class="inline" method="post" action="/service/complaint">
+        <input type="hidden" name="complaintId" value="{{.ID}}"><input type="hidden" name="decision" value="reject">
+        <input name="note" placeholder="驳回原因" size="10"><button class="btn warn">驳回</button></form>
+    </td>
+  </tr>
+  {{else}}<tr><td colspan="6" class="empty">无待处理售后</td></tr>{{end}}</tbody></table>
+  {{if .AftercareDone}}
+  <table style="margin-top:12px"><thead><tr><th>售后单</th><th>预约</th><th>结果</th><th>处理说明</th><th>退款</th></tr></thead><tbody>
+  {{range .AftercareDone}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td><td>{{.BookingID}}</td>
+    <td><span class="st st-{{.Status}}">{{statusLabel .Status}}</span></td>
+    <td><small class="note">{{.DecisionNote}}</small></td>
+    <td>{{if .RefundID}}<span class="st st-{{.RefundStatus}}">{{statusLabel .RefundStatus}}</span>{{else}}<small class="note">—</small>{{end}}</td>
+  </tr>
+  {{end}}</tbody></table>
+  {{end}}
+</section>
+
+<section>
+  <h2><span class="dot"></span>退款失败待跟进</h2>
+  <p class="sec-sub">退款状态独立于预约状态 · 失败后重试发起，直到渠道返回结果</p>
+  <table><thead><tr><th>退款单</th><th>预约</th><th>金额</th><th>失败原因</th><th style="width:110px">操作</th></tr></thead><tbody>
+  {{range .RefundFail}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td><td>{{.BookingID}}</td><td>{{.Amount}} 分</td>
+    <td style="color:#8f2f28">{{.FailReason}}</td>
+    <td><form class="inline" method="post" action="/service/refund-retry"><input type="hidden" name="refundId" value="{{.ID}}"><button class="btn pri">重试退款</button></form></td>
+  </tr>
+  {{else}}<tr><td colspan="5" class="empty">无失败退款</td></tr>{{end}}</tbody></table>
+</section>
+
+<section>
+  <h2><span class="dot"></span>退款处理中</h2>
+  <table><thead><tr><th>退款单</th><th>预约</th><th>金额</th><th>状态</th></tr></thead><tbody>
+  {{range .RefundPending}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td><td>{{.BookingID}}</td><td>{{.Amount}} 分</td>
+    <td><span class="st st-refund_pending">{{statusLabel .Status}}</span></td>
+  </tr>
+  {{else}}<tr><td colspan="4" class="empty">无处理中退款</td></tr>{{end}}</tbody></table>
+</section>
+
+<section>
+  <h2><span class="dot"></span>异常支付登记</h2>
+  <p class="sec-sub">超时关闭后收到成功通知 → 已自动发起原路退款，预约不恢复</p>
+  <table><thead><tr><th>单号</th><th>用户</th><th>状态</th><th>处理说明</th></tr></thead><tbody>
+  {{range .Anomalies}}<tr>
+    <td style="font-size:12px;color:var(--muted)">{{.ID}}</td><td>#{{.UserID}}</td>
+    <td><span class="st st-payment_anomaly">{{statusLabel .Status}}</span></td>
+    <td><small class="note">已收款但预约已终结；退款自动发起，失败可在上方"退款失败"跟进重试</small></td>
+  </tr>
+  {{else}}<tr><td colspan="4" class="empty">无异常支付记录</td></tr>{{end}}</tbody></table>
+</section>
+</div>
+<footer>爪印云 · 题目02 宠物门店预约经营场景</footer>
+</body></html>
